@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://washoora.vercel.app/sitemap.xml
