@@ -11,12 +11,18 @@ import Testimonials from "./components/Testimonials";
 import Faq from "./components/Faq";
 import WhatsappButton from "./components/WhatsappButton";
 import CallButton from "./components/CallButton";
+import BookingModal from "./components/BookingModal";
 
 export default function Home() {
   return (
     <>
       <Navbar />
       <Hero />
+
+      <div className="flex justify-center py-8">
+        <BookingModal />
+      </div>
+
       <Services />
       <About />
       <WhyChoose />
@@ -24,7 +30,6 @@ export default function Home() {
       <Gallery />
       <Testimonials />
       <Faq />
-
       <Contact />
       <Footer />
       <CallButton />
