@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import AdminStats from "../components/AdminStats";
+import Header from "../components/admin/Header";
+import SearchBar from "../components/admin/SearchBar";
+import BookingTable from "../components/admin/BookingTable";
 
 type Booking = {
   id: number;
@@ -120,138 +123,32 @@ useEffect(() => {
     });
   }, [bookings, search]);
 
-  return (
-    <div className="min-h-screen bg-gray-100 p-8">
+return (
+  <div className="min-h-screen bg-zinc-950 p-8">
 
-      <div className="flex justify-between items-center mb-8">
+    <Header
+      total={total}
+      onLogout={logout}
+    />
 
-        <h1 className="text-4xl font-bold">
-          Washoora Admin Panel
-        </h1>
+    <AdminStats
+      total={total}
+      pending={pending}
+      completed={completed}
+      cancelled={cancelled}
+    />
 
-        <button
-          onClick={logout}
-          className="bg-red-600 text-white px-5 py-2 rounded-lg"
-        >
-          Logout
-        </button>
+    <SearchBar
+      value={search}
+      onChange={setSearch}
+    />
 
-      </div>
+    <BookingTable
+      bookings={filteredBookings}
+      updateStatus={updateStatus}
+      deleteBooking={deleteBooking}
+    />
 
-      <AdminStats
-        total={total}
-        pending={pending}
-        completed={completed}
-        cancelled={cancelled}
-      />
-
-      <div className="bg-white rounded-xl shadow p-5 mb-6">
-
-        <input
-          type="text"
-          placeholder="🔍 Search Booking..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full border rounded-lg p-3"
-        />
-
-      </div>
-            <div className="overflow-auto bg-white rounded-xl shadow">
-
-        <table className="w-full">
-
-          <thead className="bg-black text-white">
-
-            <tr>
-              <th className="p-3">Name</th>
-              <th className="p-3">Phone</th>
-              <th className="p-3">Vehicle</th>
-              <th className="p-3">Service</th>
-              <th className="p-3">Address</th>
-              <th className="p-3">Date</th>
-              <th className="p-3">Status</th>
-              <th className="p-3">Action</th>
-            </tr>
-
-          </thead>
-
-          <tbody>
-
-            {filteredBookings.map((b) => (
-
-              <tr key={b.id} className="border-b text-center">
-
-                <td className="p-3">{b.customer_name}</td>
-
-                <td>
-  <a
-    href={`tel:${b.phone}`}
-    className="text-blue-600 hover:underline font-medium"
-  >
-    {b.phone}
-  </a>
-</td>
-
-                <td>{b.vehicle_type}</td>
-
-                <td>{b.service}</td>
-
-                <td>{b.address}</td>
-
-                <td>{b.booking_date}</td>
-
-                <td>
-
-                  <select
-                    value={b.status}
-                    onChange={(e) =>
-                      updateStatus(b.id, e.target.value)
-                    }
-                    className="border rounded p-2"
-                  >
-                    <option>Pending</option>
-                    <option>Confirmed</option>
-                    <option>Completed</option>
-                    <option>Cancelled</option>
-                  </select>
-
-                </td>
-
-               <td className="space-x-2">
-
-  <a
-    href={`https://wa.me/91${b.phone}?text=${encodeURIComponent(
-      `Hi ${b.customer_name},
-
-Your Washoora booking is currently "${b.status}".
-
-Thank you for choosing Washoora.`
-    )}`}
-    target="_blank"
-    className="bg-green-600 text-white px-3 py-2 rounded"
-  >
-    WhatsApp
-  </a>
-
-  <button
-    onClick={() => deleteBooking(b.id)}
-    className="bg-red-600 text-white px-3 py-2 rounded"
-  >
-    Delete
-  </button>
-
-</td>
-
-              </tr>
-
-            ))}
-
-          </tbody>
-
-        </table>
-
-        </div>
-
-    </div>
-  );
+  </div>
+);
 }

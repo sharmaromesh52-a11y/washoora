@@ -22,7 +22,7 @@ export const metadata = {
   verification: {
     google: "G_bOAPRaBbaHyCYtwLZLHzgN-FiZO1E-ujbKDQT8YFU",
   },
-};
+};      
 export default function RootLayout({
   children,
 }: Readonly<{
