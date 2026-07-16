@@ -1,92 +1,77 @@
+"use client";
+
+type ServiceItem = {
+  title: string;
+  description: string;
+  price: string;
+};
+
 export default function Services() {
-  const services = [
+  const servicesData: ServiceItem[] = [
     {
-      icon: "🚗",
       title: "Exterior Wash",
-      price: "₹299",
-      desc: "High-pressure foam wash with premium shampoo for a spotless shine.",
+      description: "High-pressure foam wash with premium shampoo for a spotless outer shine.",
+      price: "199",
     },
     {
-      icon: "🧼",
       title: "Interior Detailing",
-      price: "₹499",
-      desc: "Deep vacuum cleaning, dashboard polishing and interior sanitization.",
+      description: "Deep vacuum cleaning, dashboard polishing, and complete interior sanitization.",
+      price: "349",
     },
     {
-      icon: "✨",
-      title: "Ceramic Coating",
-      price: "₹999",
-      desc: "Long-lasting protection with a glossy showroom finish.",
-    },
-    {
-      icon: "🛞",
-      title: "Tyre & Alloy Care",
-      price: "₹399",
-      desc: "Professional tyre dressing and alloy wheel cleaning.",
-    },
-    {
-      icon: "🔧",
-      title: "Engine Bay Cleaning",
-      price: "₹699",
-      desc: "Safe engine compartment cleaning without damaging components.",
-    },
-    {
-      icon: "🏠",
-      title: "Doorstep Service",
-      price: "Free Visit",
-      desc: "Premium car care at your home or office anywhere in the city.",
+      title: "Bike/Scooty Wash",
+      description: "Premium doorstep foam wash, thorough cleaning, and shining wax for two-wheelers.",
+      price: "79",
     },
   ];
 
   return (
-    <section
-      id="services"
-      className="bg-[#0B0F19] text-white py-24 px-6"
-    >
+    <section id="services" className="bg-[#08111F] py-24 px-6 text-white">
       <div className="max-w-7xl mx-auto">
-
-        <h2 className="text-center text-5xl font-extrabold mb-4">
-          Our Services
-        </h2>
-
-        <p className="text-center text-gray-400 text-lg mb-16 max-w-2xl mx-auto">
-          Professional doorstep car washing and detailing services with premium
-          quality products and trained experts.
+        
+        <p className="text-blue-400 uppercase tracking-[5px] font-semibold text-center">
+          OUR SERVICES
         </p>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <h2 className="text-5xl font-bold text-center mt-4">
+          Premium Doorstep Care
+        </h2>
 
-          {services.map((item, index) => (
+        <p className="text-gray-400 text-center mt-5 max-w-3xl mx-auto">
+          We bring high-quality vehicle detailing and washing services directly to your doorstep.
+        </p>
 
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
+          {servicesData.map((service, index) => (
             <div
               key={index}
-              className="group rounded-3xl bg-[#111827] border border-gray-800 p-8 transition-all duration-300 hover:-translate-y-3 hover:border-blue-500 hover:shadow-[0_0_35px_rgba(59,130,246,0.25)]"
+              className="bg-[#0f1b2e] border border-gray-800 rounded-3xl p-8 hover:border-blue-500 transition-all duration-300 flex flex-col justify-between group shadow-xl"
             >
-
-              <div className="text-6xl mb-6 transition-transform duration-300 group-hover:scale-110">
-                {item.icon}
+              <div>
+                <h3 className="text-2xl font-bold text-white group-hover:text-blue-400 transition">
+                  {service.title}
+                </h3>
+                <p className="text-gray-400 mt-4 text-sm leading-relaxed">
+                  {service.description}
+                </p>
               </div>
 
-              <h3 className="text-2xl font-bold mb-4">
-                {item.title}
-              </h3>
-
-              <p className="text-gray-400 leading-7 mb-6">
-                {item.desc}
-              </p>
-
-              <div className="text-3xl font-bold text-blue-400 mb-8">
-                {item.price}
+              <div className="mt-8">
+                <p className="text-3xl font-extrabold text-blue-500 font-mono">
+                  ₹{service.price}
+                </p>
+                <button 
+                  onClick={() => {
+                    const modalBtn = document.querySelector('button[class*="bg-green-500"]') as HTMLButtonElement;
+                    if (modalBtn) modalBtn.click();
+                  }}
+                  className="w-full mt-6 bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-semibold transition active:scale-[0.98]"
+                >
+                  Book Now
+                </button>
               </div>
-
-              <button className="w-full bg-green-500 hover:bg-green-600 py-4 rounded-xl font-semibold transition duration-300">
-                Book Now
-              </button>
-
             </div>
-
           ))}
-
         </div>
 
       </div>

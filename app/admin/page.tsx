@@ -122,9 +122,9 @@ export default function AdminPage() {
   }
 
   const total = bookings.length;
-  const pending = bookings.filter((b) => b.status === "Pending").length;
-  const completed = bookings.filter((b) => b.status === "Completed").length;
-  const cancelled = bookings.filter((b) => b.status === "Cancelled").length;
+  const pending = bookings.filter((b) => b.status === "Pending" || b.status === "pending").length;
+  const completed = bookings.filter((b) => b.status === "Completed" || b.status === "completed").length;
+  const cancelled = bookings.filter((b) => b.status === "Cancelled" || b.status === "cancelled").length;
   
   const today = new Date().toISOString().split("T")[0];
   const todayBookings = bookings.filter((b) => b.booking_date === today).length;
@@ -149,9 +149,9 @@ export default function AdminPage() {
   }, [bookings, selectedBooking]);
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white p-8 font-sans">
+    <div className="min-h-screen bg-[#0d0f12] text-white p-8 font-sans">
       {showToast && (
-        <div className="fixed top-5 right-5 z-50 bg-green-600 text-white px-6 py-4 rounded-2xl shadow-xl animate-bounce">
+        <div className="fixed top-5 right-5 z-50 bg-green-600 text-white px-6 py-4 rounded-2xl shadow-xl">
           🚗 New Booking Received!
         </div>
       )}
@@ -159,35 +159,37 @@ export default function AdminPage() {
       {/* Header section */}
       <div className="flex justify-between items-center mb-8 border-b border-zinc-800 pb-4">
         <div>
-          <h1 className="text-4xl font-bold text-blue-500 tracking-wide">WASH<span className="text-white">OORA</span></h1>
-          <p className="text-zinc-400 text-sm mt-1">Admin Management Dashboard</p>
+          <h1 className="text-4xl font-bold text-white tracking-wide">Washoora Admin</h1>
+          <p className="text-zinc-400 text-sm mt-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
         </div>
-        <button onClick={logout} className="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-xl text-sm font-semibold transition">
-          Logout
-        </button>
+        <div className="flex items-center gap-4">
+          <div className="bg-zinc-900 px-4 py-2 rounded-xl text-xs border border-zinc-800">
+            <span className="text-zinc-400">Total Bookings: </span>
+            <span className="font-bold text-white text-sm">{total}</span>
+          </div>
+          <button onClick={logout} className="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition">
+            Logout
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards Section */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-        <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl text-center">
-          <p className="text-zinc-400 text-xs uppercase font-medium">Total Bookings</p>
-          <p className="text-3xl font-bold mt-2 text-white">{total}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-6 rounded-3xl relative overflow-hidden shadow-lg">
+          <p className="text-blue-100 text-sm font-medium">Total Bookings</p>
+          <p className="text-4xl font-bold mt-2 text-white">{total}</p>
         </div>
-        <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl text-center">
-          <p className="text-zinc-400 text-xs uppercase font-medium text-yellow-500">Pending</p>
-          <p className="text-3xl font-bold mt-2 text-yellow-500">{pending}</p>
+        <div className="bg-gradient-to-br from-amber-500 to-amber-600 p-6 rounded-3xl relative overflow-hidden shadow-lg">
+          <p className="text-amber-100 text-sm font-medium">Pending</p>
+          <p className="text-4xl font-bold mt-2 text-white">{pending}</p>
         </div>
-        <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl text-center">
-          <p className="text-zinc-400 text-xs uppercase font-medium text-green-500">Completed</p>
-          <p className="text-3xl font-bold mt-2 text-green-500">{completed}</p>
+        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 p-6 rounded-3xl relative overflow-hidden shadow-lg">
+          <p className="text-emerald-100 text-sm font-medium">Completed</p>
+          <p className="text-4xl font-bold mt-2 text-white">{completed}</p>
         </div>
-        <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl text-center">
-          <p className="text-zinc-400 text-xs uppercase font-medium text-red-500">Cancelled</p>
-          <p className="text-3xl font-bold mt-2 text-red-500">{cancelled}</p>
-        </div>
-        <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl text-center col-span-2 lg:col-span-1">
-          <p className="text-zinc-400 text-xs uppercase font-medium text-blue-400">Today's Jobs</p>
-          <p className="text-3xl font-bold mt-2 text-blue-400">{todayBookings}</p>
+        <div className="bg-gradient-to-br from-pink-600 to-pink-700 p-6 rounded-3xl relative overflow-hidden shadow-lg">
+          <p className="text-pink-100 text-sm font-medium">Cancelled</p>
+          <p className="text-4xl font-bold mt-2 text-white">{cancelled}</p>
         </div>
       </div>
 
@@ -195,37 +197,45 @@ export default function AdminPage() {
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 mb-6">
         <input
           type="text"
-          placeholder="🔍 Search name, phone number, vehicle or service type..."
+          placeholder="Search by customer, phone, vehicle..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full border border-zinc-800 rounded-xl p-3.5 bg-zinc-950 text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 text-sm"
+          className="w-full border border-zinc-800 rounded-xl p-3.5 bg-zinc-950 text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500 text-sm"
         />
       </div>
 
       {/* Main Bookings Data Table */}
       <div className="overflow-auto bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl">
-        <table className="w-full text-center border-collapse text-sm">
-          <thead className="bg-zinc-950 text-zinc-400 uppercase font-semibold border-b border-zinc-800">
+        <table className="w-full text-left border-collapse text-sm">
+          <thead className="bg-[#16191f] text-zinc-400 uppercase font-semibold border-b border-zinc-800 text-xs">
             <tr>
-              <th className="p-4">Customer Name</th>
+              <th className="p-4">Customer</th>
               <th className="p-4">Phone</th>
-              <th className="p-4">Vehicle Model</th>
-              <th className="p-4">Service Type</th>
+              <th className="p-4">Vehicle</th>
+              <th className="p-4">Service</th>
+              <th className="p-4">Address</th>
+              <th className="p-4">Date</th>
               <th className="p-4">Status</th>
-              <th className="p-4">Actions</th>
+              <th className="p-4 text-center">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-800 text-zinc-300">
             {filteredBookings.map((b) => (
-              <tr key={b.id} className="hover:bg-zinc-800/40 transition cursor-pointer" onClick={() => setSelectedBooking(b)}>
-                <td className="p-4 font-medium text-white text-left pl-6">{b.customer_name}</td>
+              <tr 
+                key={b.id} 
+                className="hover:bg-zinc-800/40 transition cursor-pointer" 
+                onClick={() => setSelectedBooking(b)}
+              >
+                <td className="p-4 font-semibold text-white">{b.customer_name}</td>
                 <td className="p-4" onClick={(e) => e.stopPropagation()}>
                   <a href={`tel:${b.phone}`} className="text-blue-400 hover:underline">
                     {b.phone}
                   </a>
                 </td>
-                <td className="p-4 text-cyan-400">{b.vehicle_type}</td>
-                <td className="p-4">{b.service}</td>
+                <td className="p-4 text-zinc-400">{b.vehicle_type}</td>
+                <td className="p-4 font-medium">{b.service}</td>
+                <td className="p-4 text-zinc-400 max-w-xs truncate">{b.address}</td>
+                <td className="p-4 font-mono text-zinc-400">{b.booking_date}</td>
                 <td className="p-4" onClick={(e) => e.stopPropagation()}>
                   <select
                     value={b.status}
@@ -238,7 +248,7 @@ export default function AdminPage() {
                     <option value="Cancelled">Cancelled</option>
                   </select>
                 </td>
-                <td className="p-4 space-x-2" onClick={(e) => e.stopPropagation()}>
+                <td className="p-4 space-x-2 text-center" onClick={(e) => e.stopPropagation()}>
                   <a
                     href={`https://wa.me/91${b.phone}?text=${encodeURIComponent(
                       `Hi ${b.customer_name},\n\nYour Washoora doorstep booking status has been updated to: "${b.status}".\n\nThank you for choosing Washoora Car Care!`
@@ -260,7 +270,7 @@ export default function AdminPage() {
             ))}
             {filteredBookings.length === 0 && (
               <tr>
-                <td colSpan={6} className="p-8 text-zinc-500 text-center">No bookings found matching your search.</td>
+                <td colSpan={8} className="p-8 text-zinc-500 text-center">No bookings found matching your search.</td>
               </tr>
             )}
           </tbody>
@@ -313,7 +323,7 @@ export default function AdminPage() {
             )}
 
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setSelectedBooking(null)} className="flex-1 py-2.5 rounded-xl border border-zinc-800 hover:bg-zinc-800 text-zinc-400 hover:text-white font-medium text-sm transition">
+              <button onClick={() => setSelectedBooking(null)} className="flex-1 py-2.5 rounded-xl border border-zinc-800 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white font-medium text-sm transition">
                 Close View
               </button>
             </div>
