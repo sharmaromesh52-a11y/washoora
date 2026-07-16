@@ -3,6 +3,7 @@ import {
   Clock3,
   CheckCircle2,
   XCircle,
+  Calendar,
 } from "lucide-react";
 
 type Props = {
@@ -10,6 +11,7 @@ type Props = {
   pending: number;
   completed: number;
   cancelled: number;
+  todayBookings: number;
 };
 
 export default function AdminStats({
@@ -17,8 +19,15 @@ export default function AdminStats({
   pending,
   completed,
   cancelled,
+  todayBookings,
 }: Props) {
   const cards = [
+    {
+      title: "Today's Bookings",
+      value: todayBookings,
+      color: "from-violet-500 to-fuchsia-600",
+      icon: <Calendar size={32} />,
+    },
     {
       title: "Total Bookings",
       value: total,
@@ -46,7 +55,7 @@ export default function AdminStats({
   ];
 
   return (
-    <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4 mb-8">
+    <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-5 mb-8">
 
       {cards.map((card) => (
 

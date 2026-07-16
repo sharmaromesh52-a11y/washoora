@@ -14,12 +14,16 @@ type Props = {
   bookings: Booking[];
   updateStatus: (id: number, status: string) => void;
   deleteBooking: (id: number) => void;
+  onBookingSelect: (booking: Booking) => void;
+
 };
 
 export default function BookingTable({
   bookings,
   updateStatus,
   deleteBooking,
+   onBookingSelect,
+  
 }: Props) {
   return (
     <div className="overflow-x-auto rounded-3xl border border-zinc-800 bg-zinc-900">
@@ -48,9 +52,10 @@ export default function BookingTable({
           {bookings.map((b) => (
 
             <tr
-              key={b.id}
-              className="border-t border-zinc-800 hover:bg-zinc-800/60 transition"
-            >
+  key={b.id}
+  onClick={() => onBookingSelect(b)}
+  className="border-t border-zinc-800 hover:bg-zinc-800/60 transition cursor-pointer"
+>
 
               <td className="p-4 font-semibold">
                 {b.customer_name}
