@@ -14,6 +14,7 @@ type Booking = {
   booking_date: string;
   booking_time: string;
   status: string;
+  worker_assigned?: string;
 };
 
 export default function AdminPage() {
@@ -21,11 +22,14 @@ export default function AdminPage() {
 
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
   const [showToast, setShowToast] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
   const channelRef = useRef<any>(null);
   const firstLoad = useRef(true);
+
+  const availableWorkers = ["Unassigned", "Rajesh Kumar", "Sunil Sharma", "Amit Meena", "Vikram Singh"];
 
   useEffect(() => {
     const admin = localStorage.getItem("admin");
@@ -98,6 +102,18 @@ export default function AdminPage() {
     }
   }
 
+  async function updateWorker(id: number, workerName: string) {
+    await supabase
+      .from("bookings")
+      .update({ worker_assigned: workerName })
+      .eq("id", id);
+
+    loadBookings();
+    if (selectedBooking && selectedBooking.id === id) {
+      setSelectedBooking((prev) => prev ? { ...prev, worker_assigned: workerName } : null);
+    }
+  }
+
   async function deleteBooking(id: number) {
     if (!confirm("Delete Booking?")) return;
 
@@ -121,126 +137,202 @@ export default function AdminPage() {
     router.push("/login");
   }
 
+  // Pure JavaScript Native CSV / Excel Data Compiler Engine
+  const exportToCSV = () => {
+    if (filteredBookings.length === 0) {
+      alert("No data available to export node payload.");
+      return;
+    }
+
+    const headers = ["Order ID", "Customer Name", "Phone", "Vehicle Identity", "Service Profile", "Date", "Time Slot", "Status", "Assigned Operator"];
+    
+    const rows = filteredBookings.map(b => [
+      `WSH-${b.id}`,
+      `"${b.customer_name.replace(/"/g, '""')}"`,
+      b.phone,
+      `"${b.vehicle_type.replace(/"/g, '""')}"`,
+      `"${b.service.replace(/"/g, '""')}"`,
+      b.booking_date,
+      b.booking_time || "N/A",
+      b.status,
+      b.worker_assigned || "Unassigned"
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `washoora_logs_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const getServicePrice = (serviceName: string): number => {
+    const name = serviceName.toLowerCase();
+    if (name.includes("interior")) return 399;
+    if (name.includes("exterior")) return 199;
+    if (name.includes("premium") || name.includes("detail")) return 399;
+    if (name.includes("bike") || name.includes("scooty")) return 79;
+    return 199;
+  };
+
   const total = bookings.length;
   const pending = bookings.filter((b) => b.status === "Pending" || b.status === "pending").length;
+  const completedBookings = bookings.filter((b) => b.status === "Completed" || b.status === "completed" || b.status === "Confirmed" || b.status === "confirmed");
   const completed = bookings.filter((b) => b.status === "Completed" || b.status === "completed").length;
   const cancelled = bookings.filter((b) => b.status === "Cancelled" || b.status === "cancelled").length;
   
-  const today = new Date().toISOString().split("T")[0];
-  const todayBookings = bookings.filter((b) => b.booking_date === today).length;
+  const totalRevenue = useMemo(() => {
+    return completedBookings.reduce((sum, b) => sum + getServicePrice(b.service), 0);
+  }, [completedBookings]);
 
   const filteredBookings = useMemo(() => {
     const q = search.toLowerCase();
     return bookings.filter((b) => {
-      return (
+      const matchesSearch = 
         (b.customer_name?.toLowerCase() || "").includes(q) ||
         (b.phone?.toLowerCase() || "").includes(q) ||
         (b.vehicle_type?.toLowerCase() || "").includes(q) ||
-        (b.service?.toLowerCase() || "").includes(q)
-      );
+        (b.service?.toLowerCase() || "").includes(q) ||
+        (b.worker_assigned?.toLowerCase() || "").includes(q);
+      
+      const matchesStatus = statusFilter === "All" || b.status.toLowerCase() === statusFilter.toLowerCase();
+      
+      return matchesSearch && matchesStatus;
     });
-  }, [bookings, search]);
+  }, [bookings, search, statusFilter]);
 
-  const customerHistory = useMemo(() => {
-    if (!selectedBooking) return [];
-    return bookings.filter(
-      (b) => b.phone === selectedBooking.phone && b.id !== selectedBooking.id
+  const handleSendInvoice = (b: Booking) => {
+    const price = getServicePrice(b.service);
+    const invoiceText = `━━━━━━━━━━━━━━━━━━━━\n   🧾 *WASHUORA CAR CARE*   \n   Premium Doorstep Service\n━━━━━━━━━━━━━━━━━━━━\n\n*Invoice ID:* WSH-INV-${b.id}\n*Customer:* ${b.customer_name}\n*Vehicle:* ${b.vehicle_type}\n*Service Profile:* ${b.service}\n\n*Service Base:* ₹${price}\n*Home Visit Fee:* ₹0 (FREE)\n*Total Amount:* ₹${price}\n\n*Status:* ✅ PAID / COMPLETED\n\n━━━━━━━━━━━━━━━━━━━━\nThank you for choosing Washoora!\n302, Kamal Heights, Modi Road, Jhunjhunu`;
+
+    window.open(
+      `https://wa.me/91${b.phone}?text=${encodeURIComponent(invoiceText)}`,
+      "_blank"
     );
-  }, [bookings, selectedBooking]);
+  };
 
   return (
-    <div className="min-h-screen bg-[#0d0f12] text-white p-8 font-sans">
+    <div className="min-h-screen bg-[#000000] text-[#fffefe] p-8 font-sans selection:bg-[#1488fc]/30 select-none">
       {showToast && (
-        <div className="fixed top-5 right-5 z-50 bg-green-600 text-white px-6 py-4 rounded-2xl shadow-xl">
+        <div className="fixed top-6 right-6 z-50 bg-[#1488fc] text-white px-6 py-4 rounded-xl shadow-[0_0_30px_rgba(20,136,252,0.3)] border border-[#2ba6ff]/40 font-medium">
           🚗 New Booking Received!
         </div>
       )}
 
-      {/* Header section */}
-      <div className="flex justify-between items-center mb-8 border-b border-zinc-800 pb-4">
+      {/* Premium Header Console */}
+      <div className="flex justify-between items-center mb-10 border-b border-zinc-800 pb-6">
         <div>
-          <h1 className="text-4xl font-bold text-white tracking-wide">Washoora Admin</h1>
-          <p className="text-zinc-400 text-sm mt-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-zinc-200 to-zinc-500 bg-clip-text text-transparent">
+            WASH<span className="text-[#1488fc]">OORA</span> DTO
+          </h1>
+          <p className="text-zinc-500 text-xs uppercase tracking-widest font-semibold mt-1">Luxury Vehicle Care Workspace</p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="bg-zinc-900 px-4 py-2 rounded-xl text-xs border border-zinc-800">
-            <span className="text-zinc-400">Total Bookings: </span>
-            <span className="font-bold text-white text-sm">{total}</span>
-          </div>
-          <button onClick={logout} className="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition">
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={exportToCSV}
+            className="bg-zinc-900 hover:bg-zinc-800 text-[#1488fc] px-4 py-2 rounded-lg text-xs font-bold border border-zinc-800 hover:border-[#1488fc]/40 transition-all duration-150"
+          >
+            Export Logs
+          </button>
+          <button onClick={logout} className="bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-5 py-2 rounded-lg text-xs font-semibold border border-zinc-800 transition-all duration-200 focus:outline-none">
             Logout
           </button>
         </div>
       </div>
 
-      {/* Stats Cards Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-6 rounded-3xl relative overflow-hidden shadow-lg">
-          <p className="text-blue-100 text-sm font-medium">Total Bookings</p>
-          <p className="text-4xl font-bold mt-2 text-white">{total}</p>
+      {/* Token-Driven Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 mb-10">
+        <div className="bg-[#171719] border border-zinc-800/80 p-6 rounded-xl relative overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+          <p className="text-zinc-500 text-[11px] font-bold uppercase tracking-wider">Total Orders</p>
+          <p className="text-3xl font-bold mt-2 font-mono tracking-tight text-white">{total}</p>
+          <div className="absolute right-0 bottom-0 top-0 w-1 bg-zinc-700" />
         </div>
-        <div className="bg-gradient-to-br from-amber-500 to-amber-600 p-6 rounded-3xl relative overflow-hidden shadow-lg">
-          <p className="text-amber-100 text-sm font-medium">Pending</p>
-          <p className="text-4xl font-bold mt-2 text-white">{pending}</p>
+        <div className="bg-[#171719] border border-zinc-800/80 p-6 rounded-xl relative overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+          <p className="text-amber-500/80 text-[11px] font-bold uppercase tracking-wider">Queue Pending</p>
+          <p className="text-3xl font-bold mt-2 font-mono tracking-tight text-amber-400">{pending}</p>
+          <div className="absolute right-0 bottom-0 top-0 w-1 bg-amber-500/50" />
         </div>
-        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 p-6 rounded-3xl relative overflow-hidden shadow-lg">
-          <p className="text-emerald-100 text-sm font-medium">Completed</p>
-          <p className="text-4xl font-bold mt-2 text-white">{completed}</p>
+        <div className="bg-[#171719] border border-[#1488fc]/20 p-6 rounded-xl relative overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+          <p className="text-[#2ba6ff] text-[11px] font-bold uppercase tracking-wider">Jobs Completed</p>
+          <p className="text-3xl font-bold mt-2 font-mono tracking-tight text-[#1488fc]">{completed}</p>
+          <div className="absolute right-0 bottom-0 top-0 w-1 bg-[#1488fc]" />
         </div>
-        <div className="bg-gradient-to-br from-pink-600 to-pink-700 p-6 rounded-3xl relative overflow-hidden shadow-lg">
-          <p className="text-pink-100 text-sm font-medium">Cancelled</p>
-          <p className="text-4xl font-bold mt-2 text-white">{cancelled}</p>
+        <div className="bg-[#171719] border border-zinc-800/80 p-6 rounded-xl relative overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+          <p className="text-red-500/80 text-[11px] font-bold uppercase tracking-wider">Cancelled</p>
+          <p className="text-3xl font-bold mt-2 font-mono tracking-tight text-red-500">{cancelled}</p>
+          <div className="absolute right-0 bottom-0 top-0 w-1 bg-red-600/40" />
+        </div>
+        <div className="bg-[#171719] border border-emerald-500/20 p-6 rounded-xl relative overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.5)] col-span-1 sm:col-span-2 lg:col-span-1">
+          <p className="text-emerald-400 text-[11px] font-bold uppercase tracking-wider">Tracked Revenue</p>
+          <p className="text-3xl font-extrabold mt-2 font-mono text-emerald-400">₹{totalRevenue}</p>
+          <div className="absolute right-0 bottom-0 top-0 w-1 bg-emerald-500" />
         </div>
       </div>
 
-      {/* Search Filter Box */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 mb-6">
+      {/* Filter Control Console */}
+      <div className="bg-[#171719] border border-zinc-800/60 rounded-xl p-3 mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
         <input
           type="text"
-          placeholder="Search by customer, phone, vehicle..."
+          placeholder="Filter logs by client name, assigned worker, or area platform..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full border border-zinc-800 rounded-xl p-3.5 bg-zinc-950 text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500 text-sm"
+          className="w-full md:flex-1 border border-zinc-800 rounded-lg p-2.5 bg-[#000000] text-white placeholder-zinc-600 focus:outline-none focus:border-[#1488fc] focus:ring-1 focus:ring-[#1488fc] text-xs font-mono"
         />
+        <div className="flex gap-1.5 w-full md:w-auto overflow-x-auto">
+          {["All", "Pending", "Confirmed", "Completed", "Cancelled"].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setStatusFilter(tab)}
+              className={`px-3 py-1.5 rounded-md text-[11px] font-semibold transition-all duration-150 shrink-0 ${
+                statusFilter === tab 
+                  ? "bg-[#1488fc] text-white shadow-[0_0_15px_rgba(20,136,252,0.2)]" 
+                  : "bg-[#000000] text-zinc-500 border border-zinc-800 hover:text-zinc-300 hover:bg-zinc-900"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Main Bookings Data Table */}
-      <div className="overflow-auto bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl">
-        <table className="w-full text-left border-collapse text-sm">
-          <thead className="bg-[#16191f] text-zinc-400 uppercase font-semibold border-b border-zinc-800 text-xs">
+      {/* Structured Table */}
+      <div className="overflow-auto bg-[#171719] border border-zinc-800/60 rounded-xl shadow-2xl">
+        <table className="w-full text-left border-collapse text-xs">
+          <thead className="bg-[#000000] text-zinc-500 uppercase font-bold border-b border-zinc-800 text-[10px] tracking-wider">
             <tr>
-              <th className="p-4">Customer</th>
-              <th className="p-4">Phone</th>
-              <th className="p-4">Vehicle</th>
-              <th className="p-4">Service</th>
-              <th className="p-4">Address</th>
-              <th className="p-4">Date</th>
-              <th className="p-4">Status</th>
-              <th className="p-4 text-center">Action</th>
+              <th className="p-4 pl-6">Client Architecture</th>
+              <th className="p-4">Phone Link</th>
+              <th className="p-4">Vehicle Identity</th>
+              <th className="p-4">Service Profile</th>
+              <th className="p-4">Deployment Status</th>
+              <th className="p-4">Assigned Operations</th>
+              <th className="p-4 text-center">Operation Cluster</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-800 text-zinc-300">
+          <tbody className="divide-y divide-zinc-800/50 font-mono text-zinc-300">
             {filteredBookings.map((b) => (
               <tr 
                 key={b.id} 
-                className="hover:bg-zinc-800/40 transition cursor-pointer" 
+                className="hover:bg-[#1e1e21]/60 transition-all duration-150 cursor-pointer" 
                 onClick={() => setSelectedBooking(b)}
               >
-                <td className="p-4 font-semibold text-white">{b.customer_name}</td>
+                <td className="p-4 font-semibold text-white pl-6 font-sans text-sm">{b.customer_name}</td>
                 <td className="p-4" onClick={(e) => e.stopPropagation()}>
-                  <a href={`tel:${b.phone}`} className="text-blue-400 hover:underline">
+                  <a href={`tel:${b.phone}`} className="text-[#1488fc] hover:underline hover:text-[#2ba6ff]">
                     {b.phone}
                   </a>
                 </td>
-                <td className="p-4 text-zinc-400">{b.vehicle_type}</td>
-                <td className="p-4 font-medium">{b.service}</td>
-                <td className="p-4 text-zinc-400 max-w-xs truncate">{b.address}</td>
-                <td className="p-4 font-mono text-zinc-400">{b.booking_date}</td>
+                <td className="p-4 text-zinc-400 font-sans font-medium">{b.vehicle_type}</td>
+                <td className="p-4 text-zinc-200 font-sans">{b.service}</td>
                 <td className="p-4" onClick={(e) => e.stopPropagation()}>
                   <select
                     value={b.status}
                     onChange={(e) => updateStatus(b.id, e.target.value)}
-                    className="bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-white focus:outline-none text-xs"
+                    className="bg-[#000000] border border-zinc-800 rounded-md p-1.5 text-zinc-300 focus:outline-none focus:border-[#1488fc] text-[11px]"
                   >
                     <option value="Pending">Pending</option>
                     <option value="Confirmed">Confirmed</option>
@@ -248,20 +340,27 @@ export default function AdminPage() {
                     <option value="Cancelled">Cancelled</option>
                   </select>
                 </td>
-                <td className="p-4 space-x-2 text-center" onClick={(e) => e.stopPropagation()}>
-                  <a
-                    href={`https://wa.me/91${b.phone}?text=${encodeURIComponent(
-                      `Hi ${b.customer_name},\n\nYour Washoora doorstep booking status has been updated to: "${b.status}".\n\nThank you for choosing Washoora Car Care!`
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs inline-block transition font-medium"
+                <td className="p-4" onClick={(e) => e.stopPropagation()}>
+                  <select
+                    value={b.worker_assigned || "Unassigned"}
+                    onChange={(e) => updateWorker(b.id, e.target.value)}
+                    className="bg-[#000000] border border-zinc-800 rounded-md p-1.5 text-cyan-400 font-sans font-medium focus:outline-none focus:border-cyan-500 text-[11px]"
                   >
-                    WhatsApp
-                  </a>
+                    {availableWorkers.map((wk, idx) => (
+                      <option key={idx} value={wk} className="text-white">{wk}</option>
+                    ))}
+                  </select>
+                </td>
+                <td className="p-4 space-x-1.5 text-center" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => handleSendInvoice(b)}
+                    className="bg-zinc-900 border border-zinc-800 hover:border-blue-500 text-blue-400 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all duration-150"
+                  >
+                    Send Invoice
+                  </button>
                   <button
                     onClick={() => deleteBooking(b.id)}
-                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs transition font-medium"
+                    className="bg-zinc-900 border border-zinc-800 hover:border-red-500 text-red-400 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold transition-all duration-150"
                   >
                     Delete
                   </button>
@@ -270,61 +369,43 @@ export default function AdminPage() {
             ))}
             {filteredBookings.length === 0 && (
               <tr>
-                <td colSpan={8} className="p-8 text-zinc-500 text-center">No bookings found matching your search.</td>
+                <td colSpan={7} className="p-10 text-zinc-600 text-center text-xs font-mono">Empty state: No active matrix nodes match filter query.</td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
 
-      {/* Details View Modal (Popup) */}
+      {/* PopUp Details Modal */}
       {selectedBooking && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-zinc-900 border border-zinc-800 w-full max-w-lg rounded-3xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold text-white mb-1">Booking Breakdown</h2>
-            <p className="text-xs text-zinc-500 mb-4">Detailed summary of customer order</p>
+        <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-4 backdrop-blur-md transition-opacity duration-200">
+          <div className="bg-[#171719] border border-zinc-800 w-full max-w-lg rounded-xl p-6 shadow-[0_0_50px_rgba(0,0,0,0.8)] relative max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-extrabold text-white tracking-tight">Anatomy Breakdown</h2>
+            <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold mb-5">Cluster Node Data Payload</p>
             
-            <div className="space-y-3 bg-zinc-950 p-4 rounded-xl border border-zinc-800 text-sm">
-              <p><span className="text-zinc-500 font-medium">Customer Name:</span> <span className="text-white float-right font-semibold">{selectedBooking.customer_name}</span></p>
-              <p><span className="text-zinc-500 font-medium">Phone:</span> <span className="text-blue-400 float-right">{selectedBooking.phone}</span></p>
-              <p><span className="text-zinc-500 font-medium">Vehicle:</span> <span className="text-cyan-400 float-right font-semibold">{selectedBooking.vehicle_type}</span></p>
-              <p><span className="text-zinc-500 font-medium">Service Selected:</span> <span className="text-white float-right">{selectedBooking.service}</span></p>
-              <p><span className="text-zinc-500 font-medium">Address:</span> <span className="text-zinc-300 block mt-1 bg-zinc-900 p-2 rounded-lg border border-zinc-800">{selectedBooking.address}</span></p>
-              <p><span className="text-zinc-500 font-medium">Date & Time:</span> <span className="text-white float-right font-mono">{selectedBooking.booking_date} | {selectedBooking.booking_time || "N/A"}</span></p>
-              <p>
-                <span className="text-zinc-500 font-medium">Current Status:</span> 
-                <span className={`float-right font-bold text-xs px-2 py-1 rounded-md ${
-                  selectedBooking.status === 'Completed' ? 'bg-green-500/20 text-green-400' :
-                  selectedBooking.status === 'Confirmed' ? 'bg-blue-500/20 text-blue-400' :
-                  selectedBooking.status === 'Cancelled' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'
-                }`}>{selectedBooking.status}</span>
-              </p>
+            <div className="space-y-3 bg-[#000000] p-4 rounded-lg border border-zinc-800/80 text-xs font-mono">
+              <p className="flex justify-between border-b border-zinc-900 pb-1"><span className="text-zinc-500">CLIENT_NAME:</span> <span className="text-white font-sans font-bold">{selectedBooking.customer_name}</span></p>
+              <p className="flex justify-between border-b border-zinc-900 pb-1"><span className="text-zinc-500">INTERFACE_TEL:</span> <span className="text-[#1488fc]">{selectedBooking.phone}</span></p>
+              <p className="flex justify-between border-b border-zinc-900 pb-1"><span className="text-zinc-500">VEHICLE_CLASS:</span> <span className="text-white font-sans font-semibold">{selectedBooking.vehicle_type}</span></p>
+              <p className="flex justify-between border-b border-zinc-900 pb-1"><span className="text-zinc-500">SERVICE_PROFILE:</span> <span className="text-zinc-300 font-sans">{selectedBooking.service}</span></p>
+              <p className="flex justify-between border-b border-zinc-900 pb-1"><span className="text-zinc-500">ESTIMATED_VALUE:</span> <span className="text-emerald-400 font-bold font-mono text-sm">₹{getServicePrice(selectedBooking.service)}</span></p>
+              <p className="flex justify-between border-b border-zinc-900 pb-1"><span className="text-zinc-500">ASSIGNED_OPERATOR:</span> <span className="text-cyan-400 font-sans">{selectedBooking.worker_assigned || "Unassigned"}</span></p>
+              <p className="flex justify-between border-b border-zinc-900 pb-1"><span className="text-zinc-500">DATAFRAME_STAMP:</span> <span className="text-zinc-400 font-mono">{selectedBooking.booking_date} | {selectedBooking.booking_time || "N/A"}</span></p>
+              <div className="pt-1">
+                <span className="text-zinc-500 block mb-1">TARGET_ADDRESS_NODE:</span> 
+                <span className="text-zinc-300 block bg-[#171719] p-2 rounded border border-zinc-800 font-sans text-xs leading-relaxed">{selectedBooking.address}</span>
+              </div>
             </div>
 
-            {/* Previous Customer Booking History Section */}
-            {customerHistory.length > 0 && (
-              <div className="mt-5">
-                <h3 className="text-sm font-bold text-zinc-400 mb-2">Customer Previous Logs</h3>
-                <div className="space-y-2 max-h-32 overflow-y-auto pr-1">
-                  {customerHistory.map((h) => (
-                    <div key={h.id} className="flex justify-between items-center border border-zinc-800 bg-zinc-950 rounded-xl p-2.5 text-xs">
-                      <div>
-                        <p className="text-white font-medium">{h.service}</p>
-                        <p className="text-zinc-500 text-[10px]">{h.booking_date}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-cyan-400 font-mono">{h.vehicle_type}</p>
-                        <p className={`text-[10px] ${h.status === 'Completed' ? 'text-green-400' : 'text-yellow-500'}`}>{h.status}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setSelectedBooking(null)} className="flex-1 py-2.5 rounded-xl border border-zinc-800 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white font-medium text-sm transition">
-                Close View
+              <button 
+                onClick={() => handleSendInvoice(selectedBooking)}
+                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg transition-all duration-150 shadow-[0_0_15px_rgba(20,136,252,0.2)]"
+              >
+                Generate & Send Bill Text
+              </button>
+              <button onClick={() => setSelectedBooking(null)} className="flex-1 py-2 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 hover:text-white font-semibold text-xs rounded-lg transition-all duration-150">
+                Terminate View
               </button>
             </div>
           </div>
