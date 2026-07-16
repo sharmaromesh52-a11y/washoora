@@ -20,6 +20,10 @@ type Booking = {
 export default function AdminPage() {
   const router = useRouter();
 
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [securityPin, setSecurityPin] = useState("");
+  const [pinError, setPinError] = useState(false);
+
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -32,15 +36,16 @@ export default function AdminPage() {
   const availableWorkers = ["Unassigned", "Rajesh Kumar", "Sunil Sharma", "Amit Meena", "Vikram Singh"];
 
   useEffect(() => {
-    const admin = localStorage.getItem("admin");
-    if (admin !== "true") {
-      router.push("/login");
-      return;
+    const admin = localStorage.getItem("admin_secure_session");
+    if (admin === "true") {
+      setIsAuthenticated(true);
+      loadBookings();
     }
-    loadBookings();
-  }, [router]);
+  }, []);
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     channelRef.current = supabase
       .channel("bookings-live")
       .on(
@@ -67,11 +72,24 @@ export default function AdminPage() {
         supabase.removeChannel(channelRef.current);
       }
     };
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     firstLoad.current = false;
   }, []);
+
+  const handlePinSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (securityPin === "9922" || securityPin === "2026") {
+      localStorage.setItem("admin_secure_session", "true");
+      setIsAuthenticated(true);
+      setPinError(false);
+      loadBookings();
+    } else {
+      setPinError(true);
+      setSecurityPin("");
+    }
+  };
 
   async function loadBookings() {
     const { data, error } = await supabase
@@ -133,11 +151,30 @@ export default function AdminPage() {
   }
 
   function logout() {
-    localStorage.removeItem("admin");
-    router.push("/login");
+    localStorage.removeItem("admin_secure_session");
+    setIsAuthenticated(false);
+    router.push("/admin");
   }
 
-  // Pure JavaScript Native CSV / Excel Data Compiler Engine
+  const getServicePrice = (serviceName: string): number => {
+    const name = serviceName.toLowerCase();
+    if (name.includes("interior")) return 399;
+    if (name.includes("exterior")) return 199;
+    if (name.includes("premium") || name.includes("detail")) return 399;
+    if (name.includes("bike") || name.includes("scooty")) return 79;
+    return 199;
+  };
+
+  const handleSendInvoice = (b: Booking) => {
+    const price = getServicePrice(b.service);
+    const invoiceText = `━━━━━━━━━━━━━━━━━━━━\n   🧾 *WASHUORA CAR CARE*   \n   Premium Doorstep Service\n━━━━━━━━━━━━━━━━━━━━\n\n*Invoice ID:* WSH-INV-${b.id}\n*Customer:* ${b.customer_name}\n*Vehicle:* ${b.vehicle_type}\n*Service Profile:* ${b.service}\n\n*Service Base:* ₹${price}\n*Home Visit Fee:* ₹0 (FREE)\n*Total Amount:* ₹${price}\n\n*Status:* ✅ PAID / COMPLETED\n\n━━━━━━━━━━━━━━━━━━━━\nThank you for choosing Washoora!\n302, Kamal Heights, Modi Road, Jhunjhunu`;
+
+    window.open(
+      `https://wa.me/91${b.phone}?text=${encodeURIComponent(invoiceText)}`,
+      "_blank"
+    );
+  };
+
   const exportToCSV = () => {
     if (filteredBookings.length === 0) {
       alert("No data available to export node payload.");
@@ -170,15 +207,6 @@ export default function AdminPage() {
     document.body.removeChild(link);
   };
 
-  const getServicePrice = (serviceName: string): number => {
-    const name = serviceName.toLowerCase();
-    if (name.includes("interior")) return 399;
-    if (name.includes("exterior")) return 199;
-    if (name.includes("premium") || name.includes("detail")) return 399;
-    if (name.includes("bike") || name.includes("scooty")) return 79;
-    return 199;
-  };
-
   const total = bookings.length;
   const pending = bookings.filter((b) => b.status === "Pending" || b.status === "pending").length;
   const completedBookings = bookings.filter((b) => b.status === "Completed" || b.status === "completed" || b.status === "Confirmed" || b.status === "confirmed");
@@ -205,15 +233,42 @@ export default function AdminPage() {
     });
   }, [bookings, search, statusFilter]);
 
-  const handleSendInvoice = (b: Booking) => {
-    const price = getServicePrice(b.service);
-    const invoiceText = `━━━━━━━━━━━━━━━━━━━━\n   🧾 *WASHUORA CAR CARE*   \n   Premium Doorstep Service\n━━━━━━━━━━━━━━━━━━━━\n\n*Invoice ID:* WSH-INV-${b.id}\n*Customer:* ${b.customer_name}\n*Vehicle:* ${b.vehicle_type}\n*Service Profile:* ${b.service}\n\n*Service Base:* ₹${price}\n*Home Visit Fee:* ₹0 (FREE)\n*Total Amount:* ₹${price}\n\n*Status:* ✅ PAID / COMPLETED\n\n━━━━━━━━━━━━━━━━━━━━\nThank you for choosing Washoora!\n302, Kamal Heights, Modi Road, Jhunjhunu`;
-
-    window.open(
-      `https://wa.me/91${b.phone}?text=${encodeURIComponent(invoiceText)}`,
-      "_blank"
+  // 🛡️ SECURITY LAYER SCREEN RENDER LOGIC
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#000000] text-white flex items-center justify-center font-sans p-4 selection:bg-[#1488fc]/20">
+        <div className="bg-[#171719] border border-zinc-800 p-8 rounded-2xl w-full max-w-sm text-center shadow-2xl">
+          <div className="w-12 h-12 rounded-xl bg-[#1488fc]/10 border border-[#1488fc]/30 flex items-center justify-center mx-auto text-xl text-[#1488fc] font-mono font-bold shadow-[0_0_15px_rgba(20,136,252,0.1)] mb-4">
+            W
+          </div>
+          <h2 className="text-xl font-extrabold tracking-tight text-zinc-100">Gateway Authentication</h2>
+          <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mt-1">Washoora Admin Node Platform</p>
+          
+          <form onSubmit={handlePinSubmit} className="mt-6 space-y-4">
+            <input
+              type="password"
+              maxLength={4}
+              value={securityPin}
+              onChange={(e) => setSecurityPin(e.target.value.replace(/\D/g, ""))}
+              placeholder="Enter 4-Digit Security PIN"
+              className={`w-full text-center border p-3 rounded-xl bg-[#000000] text-white tracking-[1em] text-lg font-bold font-mono focus:outline-none focus:border-[#1488fc] transition-colors ${
+                pinError ? "border-red-600/60 focus:border-red-500" : "border-zinc-800"
+              }`}
+            />
+            {pinError && (
+              <p className="text-red-400 font-mono text-[10px] uppercase font-bold tracking-wider">Invalid node token credentials.</p>
+            )}
+            <button
+              type="submit"
+              className="w-full py-3 bg-[#1488fc] hover:bg-[#1488fc]/90 text-white text-xs font-bold rounded-xl tracking-wider uppercase transition-all shadow-[0_0_20px_rgba(20,136,252,0.2)]"
+            >
+              Verify Node Gateway
+            </button>
+          </form>
+        </div>
+      </div>
     );
-  };
+  }
 
   return (
     <div className="min-h-screen bg-[#000000] text-[#fffefe] p-8 font-sans selection:bg-[#1488fc]/30 select-none">

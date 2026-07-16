@@ -1,17 +1,17 @@
-import WhyChoose from "./components/WhyChoose";
 import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
+import BookingModal from "./components/BookingModal";
 import Services from "./components/Services";
 import About from "./components/About";
-import Gallery from "./components/Gallery";
-import Contact from "./components/Contact";
-import Footer from "./components/Footer";
+import WhyChoose from "./components/WhyChoose";
 import Pricing from "./components/Pricing";
+import Gallery from "./components/Gallery";
 import Testimonials from "./components/Testimonials";
 import Faq from "./components/Faq";
-import WhatsappButton from "./components/WhatsappButton";
+import Contact from "./components/Contact";
+import Footer from "./components/Footer";
 import CallButton from "./components/CallButton";
-import BookingModal from "./components/BookingModal";
+import WhatsappButton from "./components/WhatsappButton";
 
 export default function Home() {
   return (
