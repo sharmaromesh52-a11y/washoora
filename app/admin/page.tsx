@@ -1,6 +1,5 @@
 "use client";
 
-import ProcessTimeline from "./components/ProcessTimeline";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
