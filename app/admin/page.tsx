@@ -80,6 +80,7 @@ export default function AdminPage() {
 
   const handlePinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Force patch for production build sync
     if (securityPin === "9999" || securityPin === "2026") {
       localStorage.setItem("admin_secure_session", "true");
       setIsAuthenticated(true);
