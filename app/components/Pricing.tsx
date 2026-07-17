@@ -3,44 +3,55 @@
 export default function Pricing() {
   const plans = [
     {
-      title: "Basic Wash",
+      title: "Exterior Wash",
       price: "₹199",
-      features: ["Exterior Foam Wash", "Tyre Cleaning", "Microfiber Dry", "30 Minutes Service"],
+      features: ["High-pressure foam wash", "Premium outer shine shampoo", "Tyre cleaning & dressing", "Microfiber lint-free dry"],
       popular: false
     },
     {
-      title: "Premium Wash",
-      price: "₹499",
-      features: ["Exterior + Interior", "Vacuum Cleaning", "Dashboard Polish", "Tyre Shine", "Microfiber Finish"],
+      title: "Interior Detailing",
+      price: "₹349",
+      features: ["Deep cabin vacuuming", "Dashboard & console polish", "Door panels machine cleaning", "Premium interior sanitization"],
       popular: true
     },
     {
-      title: "Luxury Detailing",
-      price: "₹999+",
-      features: ["Complete Detailing", "Ceramic Protection", "Premium Interior Care", "Paint Enhancement"],
+      title: "Bike/Scooty Wash",
+      price: "₹79",
+      features: ["Premium doorstep foam wash", "Detail chain/rim cleaning", "High-gloss liquid wax coat", "Two-wheeler cosmetic finish"],
       popular: false
     }
   ];
 
   const handlePlanClick = (planName: string) => {
-    // 🚀 Trigger custom global event to open the main booking modal automatically
-    const modalTriggerButton = document.querySelector('[data-booking-trigger="true"]') as HTMLButtonElement;
-    if (modalTriggerButton) {
-      modalTriggerButton.click();
+    // 🚀 Look for any navbar or layout button that opens the modal
+    const mainTrigger = document.querySelector('button[className*="bg-[#10b981]"], button[className*="bg-emerald"]') as HTMLButtonElement;
+    
+    if (mainTrigger) {
+      mainTrigger.click();
+      
+      // Auto-inject package name into the service input layer after modal animation opens
+      setTimeout(() => {
+        const selectElement = document.querySelector('select, input[placeholder*="Service"]') as HTMLSelectElement | HTMLInputElement;
+        if (selectElement) {
+          selectElement.value = planName;
+          selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }, 250);
     } else {
-      // Fallback fallback triggering via standard custom trigger architecture
+      // Direct window event broadcast fallback
       window.dispatchEvent(new CustomEvent("open-booking-modal", { detail: { service: planName } }));
     }
   };
 
   return (
-    <section className="bg-[#000000] py-24 px-6 relative overflow-hidden border-t border-zinc-900/50">
+    <section id="services" className="bg-[#000000] py-24 px-6 relative overflow-hidden border-t border-zinc-900/50">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-16">
-          <p className="text-[#1488fc] uppercase tracking-[4px] font-bold text-xs">TRANSPARENT VALUE</p>
+          <p className="text-[#1488fc] uppercase tracking-[4px] font-bold text-xs">OUR SERVICES</p>
           <h2 className="text-4xl font-extrabold mt-3 bg-gradient-to-r from-white via-zinc-300 to-zinc-500 bg-clip-text text-transparent tracking-tight">
-            Select Your Service Grid
+            Premium Doorstep Care
           </h2>
+          <p className="text-zinc-500 text-xs mt-2">Professional vehicle detailing and washing services deployed directly to your coordinates.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
@@ -60,7 +71,7 @@ export default function Pricing() {
               )}
 
               <div>
-                <h3 className="text-white font-extrabold text-2xl tracking-tight mb-2">{plan.title}</h3>
+                <h3 className="text-white font-extrabold text-xl tracking-tight mb-4">{plan.title}</h3>
                 <p className="text-[#1488fc] font-sans font-black text-4xl tracking-tight mb-6">{plan.price}</p>
                 
                 <ul className="space-y-4 mb-8">
@@ -75,16 +86,11 @@ export default function Pricing() {
                 </ul>
               </div>
 
-              {/* Connected Active Action Button Node */}
               <button 
                 onClick={() => handlePlanClick(plan.title)}
-                className={`w-full py-3.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 transform active:scale-[0.98] ${
-                  plan.popular 
-                    ? "bg-[#1488fc] hover:bg-[#1488fc]/90 text-white shadow-[0_4px_20px_rgba(20,136,252,0.2)]" 
-                    : "bg-[#10b981] hover:bg-[#0ea5e9] text-white"
-                }`}
+                className="w-full py-3.5 bg-[#10b981] hover:bg-[#1488fc] text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 transform active:scale-[0.98]"
               >
-                Book {plan.title}
+                Book Now
               </button>
             </div>
           ))}
