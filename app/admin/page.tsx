@@ -1,5 +1,6 @@
 "use client";
 
+import ProcessTimeline from "./components/ProcessTimeline";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
@@ -278,11 +279,11 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Premium Header Console */}
+     {/* Premium Header Console */}
       <div className="flex justify-between items-center mb-10 border-b border-zinc-800 pb-6">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-zinc-200 to-zinc-500 bg-clip-text text-transparent">
-            WASH<span className="text-[#1488fc]">OORA</span> DTO
+            WASH<span className="text-[#1488fc]">OORA</span>
           </h1>
           <p className="text-zinc-500 text-xs uppercase tracking-widest font-semibold mt-1">Luxury Vehicle Care Workspace</p>
         </div>
