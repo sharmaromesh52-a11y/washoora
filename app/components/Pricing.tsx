@@ -23,24 +23,8 @@ export default function Pricing() {
   ];
 
   const handlePlanClick = (planName: string) => {
-    // 🚀 Look for any navbar or layout button that opens the modal
-    const mainTrigger = document.querySelector('button[className*="bg-[#10b981]"], button[className*="bg-emerald"]') as HTMLButtonElement;
-    
-    if (mainTrigger) {
-      mainTrigger.click();
-      
-      // Auto-inject package name into the service input layer after modal animation opens
-      setTimeout(() => {
-        const selectElement = document.querySelector('select, input[placeholder*="Service"]') as HTMLSelectElement | HTMLInputElement;
-        if (selectElement) {
-          selectElement.value = planName;
-          selectElement.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-      }, 250);
-    } else {
-      // Direct window event broadcast fallback
-      window.dispatchEvent(new CustomEvent("open-booking-modal", { detail: { service: planName } }));
-    }
+    // 🚀 Fire event directly targeting custom dynamic portal context
+    window.dispatchEvent(new CustomEvent("open-booking-modal", { detail: { service: planName } }));
   };
 
   return (
