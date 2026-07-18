@@ -1,59 +1,46 @@
 import { NextResponse } from "next/server";
 
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const mode = searchParams.get("hub.mode");
-  const token = searchParams.get("hub.verify_token");
-  const challenge = searchParams.get("hub.challenge");
-
-  const localVerifyToken = process.env.WHATSAPP_VERIFY_TOKEN;
-
-  if (mode && token) {
-    if (mode === "subscribe" && token === localVerifyToken) {
-      console.log("⚡ WHATSAPP_WEBHOOK_VERIFIED");
-      return new NextResponse(challenge, { status: 200 });
-    }
-    return new NextResponse("Forbidden", { status: 403 });
-  }
-  return new NextResponse("Bad Request", { status: 400 });
-}
-
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    // Twilio data standard Form-URL-Encoded format me bhejta hai
+    const formData = await req.formData();
+    
+    // Customer ka number aur message nikalte hain
+    const customerPhone = formData.get("From")?.toString().replace("whatsapp:", "") || "";
+    const customerMessage = formData.get("Body")?.toString() || "";
 
-    if (body.object && body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]) {
-      const messageData = body.entry[0].changes[0].value.messages[0];
-      const customerPhone = messageData.from;
-      const customerMessage = messageData.text?.body;
+    if (customerMessage && customerPhone) {
+      console.log(`📩 [Twilio] Message from ${customerPhone}: ${customerMessage}`);
 
-      if (customerMessage) {
-        console.log(`📩 Message from ${customerPhone}: ${customerMessage}`);
+      // 🚀 Forwarding text to our local AI Engine
+      const currentUrl = new URL(req.url);
+      const chatUrl = `${currentUrl.origin}/api/chat`;
 
-        // 🚀 Forwarding message to our local chat engine
-        const currentUrl = new URL(req.url);
-        const chatUrl = `${currentUrl.origin}/api/chat`;
+      const chatResponse = await fetch(chatUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: customerMessage,
+          customerPhone: customerPhone,
+          chatHistory: []
+        })
+      });
 
-        const chatResponse = await fetch(chatUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: customerMessage,
-            customerPhone: customerPhone,
-            chatHistory: []
-          })
-        });
+      const chatData = await chatResponse.json();
+      console.log(`🤖 AI Generated Reply: ${chatData.reply}`);
 
-        const chatData = await chatResponse.json();
-        console.log(`🤖 AI Response: ${chatData.reply}`);
-        
-        // Next step me hum Meta API key daalkar is reply ko real WhatsApp par return karenge!
-      }
+      // Twilio Response XML Format return karte hain taaki WhatsApp par reply automatic chala jaye
+      const twilioXmlResponse = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${chatData.reply}</Message></Response>`;
+      
+      return new NextResponse(twilioXmlResponse, {
+        headers: { "Content-Type": "text/xml" },
+        status: 200,
+      });
     }
 
-    return NextResponse.json({ status: "success" }, { status: 200 });
+    return new NextResponse("<Response></Response>", { headers: { "Content-Type": "text/xml" }, status: 200 });
   } catch (error: any) {
     console.error("Webhook Error:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return new NextResponse(`<Response><Message>Error: ${error.message}</Message></Response>`, { headers: { "Content-Type": "text/xml" }, status: 500 });
   }
 }
