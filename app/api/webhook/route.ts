@@ -2,23 +2,24 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    // Twilio data standard Form-URL-Encoded format me bhejta hai
     const formData = await req.formData();
     
-    // Customer ka number aur message nikalte hain
     const customerPhone = formData.get("From")?.toString().replace("whatsapp:", "") || "";
     const customerMessage = formData.get("Body")?.toString() || "";
 
     if (customerMessage && customerPhone) {
       console.log(`📩 [Twilio] Message from ${customerPhone}: ${customerMessage}`);
 
-      // 🚀 Forwarding text to our local AI Engine
       const currentUrl = new URL(req.url);
       const chatUrl = `${currentUrl.origin}/api/chat`;
 
+      // Kuch platform local fetch block karte hain, isliye headers me Host pass karna zaroori hai
       const chatResponse = await fetch(chatUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Host": currentUrl.host 
+        },
         body: JSON.stringify({
           message: customerMessage,
           customerPhone: customerPhone,
@@ -26,11 +27,15 @@ export async function POST(req: Request) {
         })
       });
 
+      if (!chatResponse.ok) {
+        throw new Error(`Chat API responded with status ${chatResponse.status}`);
+      }
+
       const chatData = await chatResponse.json();
       console.log(`🤖 AI Generated Reply: ${chatData.reply}`);
 
-      // Twilio Response XML Format return karte hain taaki WhatsApp par reply automatic chala jaye
-      const twilioXmlResponse = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${chatData.reply}</Message></Response>`;
+      // Twilio Messaging XML TwiML Response
+      const twilioXmlResponse = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${chatData.reply || 'Hi! How can I help you today?'}</Message></Response>`;
       
       return new NextResponse(twilioXmlResponse, {
         headers: { "Content-Type": "text/xml" },
@@ -41,6 +46,8 @@ export async function POST(req: Request) {
     return new NextResponse("<Response></Response>", { headers: { "Content-Type": "text/xml" }, status: 200 });
   } catch (error: any) {
     console.error("Webhook Error:", error.message);
-    return new NextResponse(`<Response><Message>Error: ${error.message}</Message></Response>`, { headers: { "Content-Type": "text/xml" }, status: 500 });
+    // Fallback automated response taaki user ko error direct screen par na dikhe
+    const errorXml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>Washoora Service temporarily busy. Please try again!</Message></Response>`;
+    return new NextResponse(errorXml, { headers: { "Content-Type": "text/xml" }, status: 200 }); // Status 200 return karein taaki Twilio connectivity issue na bolne lage
   }
 }
