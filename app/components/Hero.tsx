@@ -3,11 +3,11 @@
 export default function Hero() {
   const handleWhatsAppClick = () => {
     const message = "Hello Washoora! I want to book a doorstep premium wash/detailing service.";
-    window.open(`https://wa.me/917374090329?text=${encodeURIComponent(message)}`, "_blank");
+    window.open(`https://wa.me/919511539740?text=${encodeURIComponent(message)}`, "_blank");
   };
 
   const handleCallClick = () => {
-    window.location.href = "tel:917374090329";
+    window.location.href = "tel:919511539740";
   };
 
   return (
