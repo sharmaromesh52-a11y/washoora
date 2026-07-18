@@ -7,8 +7,6 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
 );
 
-const GROQ_API_KEY = process.env.GROQ_API_KEY;
-
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
@@ -19,12 +17,15 @@ export async function POST(req: Request) {
       return new NextResponse("<Response></Response>", { headers: { "Content-Type": "text/xml" }, status: 200 });
     }
 
-    console.log(`📩 [Twilio] Message from ${customerPhone}: ${customerMessage}`);
+    // DEBUG LOG: Isse Vercel log me dikhega ki key aa rahi hai ya nahi
+    const currentKey = process.env.GROQ_API_KEY;
+    console.log("🔑 [Debug] Key starts with:", currentKey ? currentKey.substring(0, 7) : "NOT FOUND");
 
-    if (!GROQ_API_KEY) {
-      console.error("❌ Missing GROQ_API_KEY!");
-      const noKeyXml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>Washoora Service: Configuration Error (Missing Free Key).</Message></Response>`;
-      return new NextResponse(noKeyXml, { headers: { "Content-Type": "text/xml" }, status: 200 });
+    if (!currentKey) {
+      return new NextResponse(
+        `<?xml version="1.0" encoding="UTF-8"?><Response><Message>Washoora AI: Vercel me GROQ_API_KEY nahi mili.</Message></Response>`, 
+        { headers: { "Content-Type": "text/xml" }, status: 200 }
+      );
     }
 
     const systemPrompt = `
@@ -41,15 +42,15 @@ export async function POST(req: Request) {
       3. CRITICAL: Once all data is provided, respond with "BOOKING_FINALIZED" followed by a confirmation summary.
     `;
 
-    // Direct HTTP Fetch to Groq (Super Stable Free Tier)
+    // Direct HTTP Fetch to Groq (Updated Stable Model Endpoint)
     const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${GROQ_API_KEY}`,
+        Authorization: `Bearer ${currentKey.trim()}`,
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "llama3-8b-8192", // Groq ka sabse light aur 100% free active instant model
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: customerMessage }
@@ -66,7 +67,6 @@ export async function POST(req: Request) {
 
     let aiReply = aiData.choices[0].message.content || "Ji batayein, kaise madad karu?";
 
-    // Database operation if booking completed
     if (aiReply.includes("BOOKING_FINALIZED")) {
       aiReply = aiReply.replace("BOOKING_FINALIZED", "");
       await supabase.from("bookings").insert([
@@ -83,15 +83,13 @@ export async function POST(req: Request) {
     }
 
     const twilioXmlResponse = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${aiReply.trim()}</Message></Response>`;
-    
-    return new NextResponse(twilioXmlResponse, {
-      headers: { "Content-Type": "text/xml" },
-      status: 200,
-    });
+    return new NextResponse(twilioXmlResponse, { headers: { "Content-Type": "text/xml" }, status: 200 });
 
   } catch (error: any) {
     console.error("🚨 Webhook Crash Error:", error.message);
-    const errorXml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>Washoora Home Service AI: ${error.message}</Message></Response>`;
-    return new NextResponse(errorXml, { headers: { "Content-Type": "text/xml" }, status: 200 });
+    return new NextResponse(
+      `<?xml version="1.0" encoding="UTF-8"?><Response><Message>Washoora Home Service AI: ${error.message}</Message></Response>`, 
+      { headers: { "Content-Type": "text/xml" }, status: 200 }
+    );
   }
 }
