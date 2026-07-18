@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Supabase Setup
 const supabase = createClient(
@@ -8,7 +7,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
 );
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 export async function POST(req: Request) {
   try {
@@ -22,8 +21,8 @@ export async function POST(req: Request) {
 
     console.log(`📩 [Twilio] Message from ${customerPhone}: ${customerMessage}`);
 
-    if (!GEMINI_API_KEY) {
-      console.error("❌ Missing GEMINI_API_KEY!");
+    if (!GROQ_API_KEY) {
+      console.error("❌ Missing GROQ_API_KEY!");
       const noKeyXml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>Washoora Service: Configuration Error (Missing Free Key).</Message></Response>`;
       return new NextResponse(noKeyXml, { headers: { "Content-Type": "text/xml" }, status: 200 });
     }
@@ -42,12 +41,30 @@ export async function POST(req: Request) {
       3. CRITICAL: Once all data is provided, respond with "BOOKING_FINALIZED" followed by a confirmation summary.
     `;
 
-    // Correct SDK Initialization
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Direct HTTP Fetch to Groq (Super Stable Free Tier)
+    const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: customerMessage }
+        ],
+      }),
+    });
+
+    const aiData = await groqResponse.json();
     
-    const response = await model.generateContent(`${systemPrompt}\n\nCustomer Message: ${customerMessage}`);
-    let aiReply = response.response.text() || "Ji batayein, kaise madad karu?";
+    if (!groqResponse.ok) {
+      console.error("Groq API Error Details:", JSON.stringify(aiData));
+      throw new Error(aiData.error?.message || "Groq Response Failure");
+    }
+
+    let aiReply = aiData.choices[0].message.content || "Ji batayein, kaise madad karu?";
 
     // Database operation if booking completed
     if (aiReply.includes("BOOKING_FINALIZED")) {
