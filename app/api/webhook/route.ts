@@ -7,7 +7,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
 );
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 export async function POST(req: Request) {
   try {
@@ -22,9 +22,9 @@ export async function POST(req: Request) {
 
     console.log(`📩 [Twilio] Message from ${customerPhone}: ${customerMessage}`);
 
-    if (!OPENAI_API_KEY) {
-      console.error("❌ Missing OPENAI_API_KEY Environment Variable in Vercel!");
-      const noKeyXml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>Washoora Service Configuration Error: Missing API Key.</Message></Response>`;
+    if (!GEMINI_API_KEY) {
+      console.error("❌ Missing GEMINI_API_KEY Environment Variable in Vercel!");
+      const noKeyXml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>Washoora Service: Configuration Error (Missing Free Key).</Message></Response>`;
       return new NextResponse(noKeyXml, { headers: { "Content-Type": "text/xml" }, status: 200 });
     }
 
@@ -42,30 +42,35 @@ export async function POST(req: Request) {
       3. CRITICAL: Once all data is provided, respond with "BOOKING_FINALIZED" followed by a confirmation summary.
     `;
 
-    // Direct OpenAI API Call (No internal sub-route fetch)
-    const openAiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: customerMessage }
-        ],
-      }),
-    });
+    // Direct Google Gemini API Call (100% Free Tier)
+    const geminiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { text: `${systemPrompt}\n\nCustomer Message: ${customerMessage}` }
+              ]
+            }
+          ]
+        }),
+      }
+    );
 
-    const aiData = await openAiResponse.json();
+    const aiData = await geminiResponse.json();
     
-    if (!openAiResponse.ok || !aiData.choices) {
-      console.error("OpenAI API Error Details:", JSON.stringify(aiData));
-      throw new Error(aiData.error?.message || "OpenAI Response Failure");
+    if (!geminiResponse.ok) {
+      console.error("Gemini API Error Details:", JSON.stringify(aiData));
+      throw new Error(aiData.error?.message || "Gemini Response Failure");
     }
 
-    let aiReply = aiData.choices[0].message.content || "Ji batayein, kaise madad karu?";
+    let aiReply = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "Ji batayein, kaise madad karu?";
 
     // Database operation if booking completed
     if (aiReply.includes("BOOKING_FINALIZED")) {
@@ -84,7 +89,7 @@ export async function POST(req: Request) {
     }
 
     // Twilio Response Format
-    const twilioXmlResponse = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${aiReply}</Message></Response>`;
+    const twilioXmlResponse = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${aiReply.trim()}</Message></Response>`;
     
     return new NextResponse(twilioXmlResponse, {
       headers: { "Content-Type": "text/xml" },
