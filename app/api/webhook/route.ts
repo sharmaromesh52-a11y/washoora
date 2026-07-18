@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Supabase Setup
 const supabase = createClient(
@@ -11,7 +12,6 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 export async function POST(req: Request) {
   try {
-    // Twilio form data parsing
     const formData = await req.formData();
     const customerPhone = formData.get("From")?.toString().replace("whatsapp:", "") || "";
     const customerMessage = formData.get("Body")?.toString() || "";
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     console.log(`📩 [Twilio] Message from ${customerPhone}: ${customerMessage}`);
 
     if (!GEMINI_API_KEY) {
-      console.error("❌ Missing GEMINI_API_KEY Environment Variable in Vercel!");
+      console.error("❌ Missing GEMINI_API_KEY!");
       const noKeyXml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>Washoora Service: Configuration Error (Missing Free Key).</Message></Response>`;
       return new NextResponse(noKeyXml, { headers: { "Content-Type": "text/xml" }, status: 200 });
     }
@@ -42,34 +42,12 @@ export async function POST(req: Request) {
       3. CRITICAL: Once all data is provided, respond with "BOOKING_FINALIZED" followed by a confirmation summary.
     `;
 
-    // Direct Google Gemini API Call (Perfect Endpoint URL)
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: `${systemPrompt}\n\nCustomer Message: ${customerMessage}` }
-              ]
-            }
-          ]
-        }),
-      }
-    );
-
-    const aiData = await geminiResponse.json();
+    // Correct SDK Initialization
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     
-    if (!geminiResponse.ok) {
-      console.error("Gemini API Error Details:", JSON.stringify(aiData));
-      throw new Error(aiData.error?.message || "Gemini Response Failure");
-    }
-
-    let aiReply = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "Ji batayein, kaise madad karu?";
+    const response = await model.generateContent(`${systemPrompt}\n\nCustomer Message: ${customerMessage}`);
+    let aiReply = response.response.text() || "Ji batayein, kaise madad karu?";
 
     // Database operation if booking completed
     if (aiReply.includes("BOOKING_FINALIZED")) {
@@ -87,7 +65,6 @@ export async function POST(req: Request) {
       ]);
     }
 
-    // Twilio Response Format
     const twilioXmlResponse = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${aiReply.trim()}</Message></Response>`;
     
     return new NextResponse(twilioXmlResponse, {
