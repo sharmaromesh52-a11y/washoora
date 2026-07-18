@@ -42,26 +42,25 @@ export async function POST(req: Request) {
       3. CRITICAL: Once all data is provided, respond with "BOOKING_FINALIZED" followed by a confirmation summary.
     `;
 
-    // Direct Google Gemini API Call (Fixed Free Endpoint URL)
-const geminiResponse = await fetch(
-  `https://generativelanguage.googleapis.com/v1beta/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-  {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { text: `${systemPrompt}\n\nCustomer Message: ${customerMessage}` }
+    // Direct Google Gemini API Call (Perfect Endpoint URL)
+    const geminiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: `${systemPrompt}\n\nCustomer Message: ${customerMessage}` }
+              ]
+            }
           ]
-        }
-      ]
-    }),
-  }
-);
+        }),
+      }
+    );
 
     const aiData = await geminiResponse.json();
     
